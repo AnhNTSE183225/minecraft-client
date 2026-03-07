@@ -5,22 +5,22 @@
 ### Windows
 Open PowerShell or Command Prompt and run:
 ```powershell
-curl -o install.bat https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/install.bat && install.bat
+curl -o install.bat https://raw.githubusercontent.com/AnhNTSE183225/minecraft-client/main/install.bat && install.bat
 ```
 
 Or download and run:
-1. Download: https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/install.bat
+1. Download: https://raw.githubusercontent.com/AnhNTSE183225/minecraft-client/main/install.bat
 2. Double-click `install.bat`
 
 ### macOS/Linux
 Open Terminal and run:
 ```bash
-curl -sSL https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/AnhNTSE183225/minecraft-client/main/install.sh | bash
 ```
 
 Or download and run:
 ```bash
-curl -O https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/install.sh
+curl -O https://raw.githubusercontent.com/AnhNTSE183225/minecraft-client/main/install.sh
 chmod +x install.sh
 ./install.sh
 ```
@@ -49,12 +49,12 @@ To get the latest version, just run the install command again!
 
 **Windows:**
 ```powershell
-curl -o install.bat https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/install.bat && install.bat
+curl -o install.bat https://raw.githubusercontent.com/AnhNTSE183225/minecraft-client/main/install.bat && install.bat
 ```
 
 **macOS/Linux:**
 ```bash
-curl -sSL https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/AnhNTSE183225/minecraft-client/main/install.sh | bash
 ```
 
 The installer will download and sync the latest version automatically.
@@ -65,5 +65,5 @@ See [README.md](README.md) for complete documentation.
 For manual installation, troubleshooting, or development info, see the full repository
 ---
 
-**Repository:** https://github.com/YOUR_USERNAME/YOUR_REPO  
-**Issues:** https://github.com/YOUR_USERNAME/YOUR_REPO/issues
+**Repository:** https://github.com/AnhNTSE183225/minecraft-client  
+**Issues:** https://github.com/AnhNTSE183225/minecraft-client/issues

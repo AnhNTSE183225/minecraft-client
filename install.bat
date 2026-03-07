@@ -10,19 +10,6 @@ REM ====================================
 set REPO_URL=https://github.com/AnhNTSE183225/minecraft-client.git
 
 REM ====================================
-REM Check Configuration
-REM ====================================
-if "%REPO_URL%"=="https://github.com/YOUR_USERNAME/YOUR_REPO.git" (
-    echo ERROR: Repository URL not configured!
-    echo.
-    echo Please edit this script and set REPO_URL to your GitHub repository.
-    echo Example: set REPO_URL=https://github.com/username/minecraft-client.git
-    echo.
-    pause
-    exit /b 1
-)
-
-REM ====================================
 REM Setup Variables
 REM ====================================
 set TEMP_DIR=%TEMP%\minecraft_client_install_%RANDOM%

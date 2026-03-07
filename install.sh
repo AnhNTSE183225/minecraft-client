@@ -11,19 +11,6 @@ echo ""
 REPO_URL="https://github.com/AnhNTSE183225/minecraft-client.git"
 
 # ====================================
-# Check Configuration
-# ====================================
-if [ "$REPO_URL" = "https://github.com/YOUR_USERNAME/YOUR_REPO.git" ]; then
-    echo "ERROR: Repository URL not configured!"
-    echo ""
-    echo "Please edit this script and set REPO_URL to your GitHub repository."
-    echo "Example: REPO_URL=\"https://github.com/username/minecraft-client.git\""
-    echo ""
-    read -n 1 -s -r -p "Press any key to exit..."
-    exit 1
-fi
-
-# ====================================
 # Setup Variables
 # ====================================
 TEMP_DIR=$(mktemp -d -t minecraft_client_install.XXXXXX)
