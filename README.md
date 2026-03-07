@@ -1,6 +1,6 @@
-# Minecraft Client - Quick Install
+# Minecraft Client - Update mods
 
-## One-Command Install
+## One-Command update
 
 ### Windows
 Open PowerShell or Command Prompt and run:
