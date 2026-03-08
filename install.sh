@@ -37,6 +37,88 @@ echo "Git found: OK"
 echo ""
 
 # ====================================
+# Check for Git LFS
+# ====================================
+if ! command -v git-lfs &> /dev/null; then
+    echo "Git LFS is not installed. Installing now..."
+    echo ""
+    
+    # Check if Homebrew is available (macOS)
+    if command -v brew &> /dev/null; then
+        echo "Installing Git LFS via Homebrew..."
+        brew install git-lfs
+        
+        if [ $? -ne 0 ]; then
+            echo ""
+            echo "ERROR: Failed to install Git LFS via Homebrew."
+            echo "Please try manually: brew install git-lfs"
+            echo "Or visit: https://git-lfs.com/"
+            echo ""
+            read -n 1 -s -r -p "Press any key to exit..."
+            exit 1
+        fi
+    # Check for apt-get (Debian/Ubuntu Linux)
+    elif command -v apt-get &> /dev/null; then
+        echo "Installing Git LFS via apt-get..."
+        sudo apt-get update && sudo apt-get install -y git-lfs
+        
+        if [ $? -ne 0 ]; then
+            echo ""
+            echo "ERROR: Failed to install Git LFS."
+            echo "Please try manually: sudo apt-get install git-lfs"
+            echo "Or visit: https://git-lfs.com/"
+            echo ""
+            read -n 1 -s -r -p "Press any key to exit..."
+            exit 1
+        fi
+    # Check for yum (RHEL/CentOS/Fedora Linux)
+    elif command -v yum &> /dev/null; then
+        echo "Installing Git LFS via yum..."
+        sudo yum install -y git-lfs
+        
+        if [ $? -ne 0 ]; then
+            echo ""
+            echo "ERROR: Failed to install Git LFS."
+            echo "Please try manually: sudo yum install git-lfs"
+            echo "Or visit: https://git-lfs.com/"
+            echo ""
+            read -n 1 -s -r -p "Press any key to exit..."
+            exit 1
+        fi
+    else
+        echo ""
+        echo "ERROR: No package manager found (brew, apt-get, yum)."
+        echo "Please install Git LFS manually from: https://git-lfs.com/"
+        echo ""
+        echo "macOS: brew install git-lfs"
+        echo "Ubuntu/Debian: sudo apt-get install git-lfs"
+        echo "RHEL/CentOS/Fedora: sudo yum install git-lfs"
+        echo ""
+        read -n 1 -s -r -p "Press any key to exit..."
+        exit 1
+    fi
+    
+    echo "Git LFS installation completed!"
+    echo ""
+fi
+
+# Initialize Git LFS (this sets up the git filters)
+echo "Initializing Git LFS..."
+git lfs install
+
+if [ $? -ne 0 ]; then
+    echo ""
+    echo "ERROR: Failed to initialize Git LFS."
+    echo "Please try running 'git lfs install' manually."
+    echo ""
+    read -n 1 -s -r -p "Press any key to exit..."
+    exit 1
+fi
+
+echo "Git LFS is ready: OK"
+echo ""
+
+# ====================================
 # Clone Repository to Temp
 # ====================================
 echo "Cloning repository..."

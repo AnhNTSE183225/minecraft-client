@@ -36,6 +36,76 @@ echo Git found: OK
 echo.
 
 REM ====================================
+REM Check for Git LFS
+REM ====================================
+where git-lfs >nul 2>nul
+if errorlevel 1 (
+    echo Git LFS is not installed. Installing now...
+    echo.
+    
+    set GIT_LFS_VERSION=3.5.1
+    set GIT_LFS_INSTALLER=%TEMP%\git-lfs-windows-v%GIT_LFS_VERSION%.exe
+    set GIT_LFS_URL=https://github.com/git-lfs/git-lfs/releases/download/v%GIT_LFS_VERSION%/git-lfs-windows-v%GIT_LFS_VERSION%.exe
+    
+    echo Downloading Git LFS v%GIT_LFS_VERSION%...
+    echo From: %GIT_LFS_URL%
+    echo.
+    
+    REM Download using PowerShell
+    powershell -Command "try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '%GIT_LFS_URL%' -OutFile '%GIT_LFS_INSTALLER%' -UseBasicParsing } catch { exit 1 }"
+    
+    if errorlevel 1 (
+        echo.
+        echo ERROR: Failed to download Git LFS installer.
+        echo Please manually install Git LFS from: https://git-lfs.com/
+        echo After installing, restart this script.
+        echo.
+        pause
+        exit /b 1
+    )
+    
+    echo Installing Git LFS...
+    echo.
+    
+    REM Run installer silently
+    "%GIT_LFS_INSTALLER%" /VERYSILENT /NORESTART
+    
+    if errorlevel 1 (
+        echo.
+        echo ERROR: Failed to install Git LFS.
+        echo Please manually install Git LFS from: https://git-lfs.com/
+        echo After installing, restart this script.
+        echo.
+        pause
+        exit /b 1
+    )
+    
+    REM Clean up installer
+    del "%GIT_LFS_INSTALLER%" >nul 2>nul
+    
+    echo Git LFS installation completed!
+    echo.
+    
+    REM Refresh PATH in current session
+    call :RefreshEnv
+)
+
+REM Initialize Git LFS (this sets up the git filters)
+echo Initializing Git LFS...
+git lfs install
+if errorlevel 1 (
+    echo.
+    echo ERROR: Failed to initialize Git LFS.
+    echo Please try running 'git lfs install' manually.
+    echo.
+    pause
+    exit /b 1
+)
+
+echo Git LFS is ready: OK
+echo.
+
+REM ====================================
 REM Clone Repository to Temp
 REM ====================================
 echo Cloning repository...
@@ -106,3 +176,14 @@ if %SYNC_SUCCESS% EQU 0 (
     echo.
 )
 pause
+exit /b 0
+
+REM ====================================
+REM Helper Function: Refresh Environment
+REM ====================================
+:RefreshEnv
+REM Refresh PATH from registry to current session
+for /f "tokens=2*" %%a in ('reg query "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment" /v PATH 2^>nul') do set "SYS_PATH=%%b"
+for /f "tokens=2*" %%a in ('reg query "HKCU\Environment" /v PATH 2^>nul') do set "USER_PATH=%%b"
+set "PATH=%SYS_PATH%;%USER_PATH%"
+exit /b 0
