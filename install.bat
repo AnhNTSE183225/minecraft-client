@@ -183,7 +183,25 @@ REM Helper Function: Refresh Environment
 REM ====================================
 :RefreshEnv
 REM Refresh PATH from registry to current session
+set "ORIGINAL_PATH=%PATH%"
+set "SYS_PATH="
+set "USER_PATH="
 for /f "tokens=2*" %%a in ('reg query "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment" /v PATH 2^>nul') do set "SYS_PATH=%%b"
 for /f "tokens=2*" %%a in ('reg query "HKCU\Environment" /v PATH 2^>nul') do set "USER_PATH=%%b"
-set "PATH=%SYS_PATH%;%USER_PATH%"
+set "NEW_PATH="
+if defined SYS_PATH (
+    set "NEW_PATH=%SYS_PATH%"
+)
+if defined USER_PATH (
+    if defined NEW_PATH (
+        set "NEW_PATH=%NEW_PATH%;%USER_PATH%"
+    ) else (
+        set "NEW_PATH=%USER_PATH%"
+    )
+)
+if defined NEW_PATH (
+    set "PATH=%NEW_PATH%"
+) else (
+    set "PATH=%ORIGINAL_PATH%"
+)
 exit /b 0
