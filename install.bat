@@ -1,4 +1,5 @@
 @echo off
+setlocal EnableExtensions
 echo ====================================
 echo Minecraft Client Installer
 echo ====================================
@@ -8,14 +9,18 @@ REM ====================================
 REM Configuration
 REM ====================================
 set REPO_URL=https://github.com/AnhNTSE183225/minecraft-client.git
+set REPO_BRANCH=main
 
 REM ====================================
 REM Setup Variables
 REM ====================================
-set TEMP_DIR=%TEMP%\minecraft_client_install_%RANDOM%
+set CACHE_ROOT=%TEMP%\minecraft_client_cache
+set TEMP_DIR=%CACHE_ROOT%\repo
+set LOCK_DIR=%CACHE_ROOT%\.lock
+set LOCK_ACQUIRED=
 
 echo Repository: %REPO_URL%
-echo Temporary Directory: %TEMP_DIR%
+echo Cache Directory: %TEMP_DIR%
 echo.
 
 REM ====================================
@@ -106,29 +111,88 @@ echo Git LFS is ready: OK
 echo.
 
 REM ====================================
-REM Clone Repository to Temp
+REM Acquire Lock For Safe Multi-Instance Execution
 REM ====================================
-echo Cloning repository...
-echo This may take a few minutes if there are large files...
-echo.
-
-git clone "%REPO_URL%" "%TEMP_DIR%"
-
+echo Acquiring install lock...
+call :AcquireLock
 if errorlevel 1 (
     echo.
-    echo ERROR: Failed to clone repository.
-    echo Please check:
-    echo 1. The repository URL is correct
-    echo 2. The repository is public or you have access
-    echo 3. You have an internet connection
-    echo.
+    echo ERROR: Failed to acquire install lock.
     pause
     exit /b 1
 )
 
-cd /d "%TEMP_DIR%"
-echo Clone completed!
+REM ====================================
+REM Prepare Repository Cache
+REM ====================================
+if not exist "%CACHE_ROOT%" mkdir "%CACHE_ROOT%"
 
+set NEED_RECLONE=
+if exist "%TEMP_DIR%\.git" (
+    echo Reusing existing cache and updating from %REPO_BRANCH%...
+    cd /d "%TEMP_DIR%"
+
+    set HAS_REMOTE=
+    for /f "delims=" %%i in ('git remote get-url origin 2^>nul') do (
+        set HAS_REMOTE=1
+        if /i not "%%i"=="%REPO_URL%" set NEED_RECLONE=1
+    )
+    if not defined HAS_REMOTE set NEED_RECLONE=1
+    if defined NEED_RECLONE echo Remote URL changed or missing. Recreating cache...
+
+    if not defined NEED_RECLONE (
+        git checkout %REPO_BRANCH% >nul 2>nul
+        if errorlevel 1 (
+            git fetch origin %REPO_BRANCH%
+            if errorlevel 1 set NEED_RECLONE=1
+            if not errorlevel 1 git checkout -b %REPO_BRANCH% origin/%REPO_BRANCH%
+        )
+
+        if not defined NEED_RECLONE (
+            git pull --ff-only origin %REPO_BRANCH%
+            if errorlevel 1 set NEED_RECLONE=1
+        )
+    )
+) else (
+    set NEED_RECLONE=1
+)
+
+if defined NEED_RECLONE (
+    echo Cloning repository into cache...
+    echo This may take a few minutes if there are large files...
+    echo.
+
+    if exist "%TEMP_DIR%" rmdir /s /q "%TEMP_DIR%"
+    git clone --branch %REPO_BRANCH% "%REPO_URL%" "%TEMP_DIR%"
+    if errorlevel 1 (
+        echo.
+        echo ERROR: Failed to clone repository.
+        echo Please check:
+        echo 1. The repository URL is correct
+        echo 2. The repository is public or you have access
+        echo 3. You have an internet connection
+        echo.
+        call :ReleaseLock
+        pause
+        exit /b 1
+    )
+)
+
+cd /d "%TEMP_DIR%"
+
+echo Pulling Git LFS content...
+git lfs pull
+if errorlevel 1 (
+    echo.
+    echo ERROR: Failed to pull Git LFS content.
+    echo Please verify your Git LFS installation and network access.
+    echo.
+    call :ReleaseLock
+    pause
+    exit /b 1
+)
+
+echo Repository cache is ready.
 echo.
 
 REM ====================================
@@ -146,17 +210,15 @@ if exist "%TEMP_DIR%\sync-mods.bat" (
 ) else (
     echo ERROR: sync-mods.bat not found!
     echo Repository may be incomplete.
+    call :ReleaseLock
     pause
     exit /b 1
 )
 
 REM ====================================
-REM Cleanup Temporary Directory
+REM Release Lock
 REM ====================================
-echo.
-echo Cleaning up temporary files...
-cd /d "%USERPROFILE%"
-rmdir /s /q "%TEMP_DIR%"
+call :ReleaseLock
 
 if %SYNC_SUCCESS% EQU 0 (
     echo.
@@ -176,6 +238,36 @@ if %SYNC_SUCCESS% EQU 0 (
     echo.
 )
 pause
+exit /b 0
+
+REM ====================================
+REM Helper Function: Acquire Lock
+REM ====================================
+:AcquireLock
+set /a LOCK_WAIT=0
+:AcquireLockTry
+mkdir "%LOCK_DIR%" >nul 2>nul
+if not errorlevel 1 (
+    set LOCK_ACQUIRED=1
+    exit /b 0
+)
+set /a LOCK_WAIT+=1
+if %LOCK_WAIT% GEQ 180 (
+    echo Timeout waiting for another installer instance to finish.
+    exit /b 1
+)
+echo Another install.bat instance is running. Waiting for cache lock...
+timeout /t 2 /nobreak >nul
+goto AcquireLockTry
+
+REM ====================================
+REM Helper Function: Release Lock
+REM ====================================
+:ReleaseLock
+if defined LOCK_ACQUIRED (
+    rmdir "%LOCK_DIR%" >nul 2>nul
+    set LOCK_ACQUIRED=
+)
 exit /b 0
 
 REM ====================================

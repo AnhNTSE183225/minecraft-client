@@ -32,7 +32,7 @@ chmod +x install.sh
 3. ✅ Downloads all mods and resource packs (via Git LFS)
 4. ✅ Syncs everything to your Minecraft installation
 5. ✅ Applies custom configurations
-6. ✅ Cleans up temporary files automatically
+6. ✅ Reuses a cached temporary repository for faster future updates
 
 ## Requirements
 
