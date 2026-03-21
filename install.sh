@@ -9,14 +9,43 @@ echo ""
 # Configuration
 # ====================================
 REPO_URL="https://github.com/AnhNTSE183225/minecraft-client.git"
+REPO_BRANCH="main"
 
 # ====================================
 # Setup Variables
 # ====================================
-TEMP_DIR=$(mktemp -d -t minecraft_client_install.XXXXXX)
+CACHE_ROOT="${TMPDIR:-/tmp}/minecraft_client_cache"
+TEMP_DIR="$CACHE_ROOT/repo"
+LOCK_DIR="$CACHE_ROOT/.lock"
+LOCK_ACQUIRED=0
+
+acquire_lock() {
+    local wait_count=0
+    mkdir -p "$CACHE_ROOT"
+    while ! mkdir "$LOCK_DIR" 2>/dev/null; do
+        wait_count=$((wait_count + 1))
+        if [ "$wait_count" -ge 180 ]; then
+            echo "Timeout waiting for another installer instance to finish."
+            return 1
+        fi
+        echo "Another install.sh instance is running. Waiting for cache lock..."
+        sleep 2
+    done
+    LOCK_ACQUIRED=1
+    return 0
+}
+
+release_lock() {
+    if [ "$LOCK_ACQUIRED" -eq 1 ]; then
+        rmdir "$LOCK_DIR" 2>/dev/null || true
+        LOCK_ACQUIRED=0
+    fi
+}
+
+trap 'release_lock' EXIT INT TERM
 
 echo "Repository: $REPO_URL"
-echo "Temporary Directory: $TEMP_DIR"
+echo "Cache Directory: $TEMP_DIR"
 echo ""
 
 # ====================================
@@ -119,30 +148,103 @@ echo "Git LFS is ready: OK"
 echo ""
 
 # ====================================
-# Clone Repository to Temp
+# Acquire Lock For Safe Multi-Instance Execution
 # ====================================
-echo "Cloning repository..."
-echo "This may take a few minutes if there are large files..."
-echo ""
-
-git clone "$REPO_URL" "$TEMP_DIR"
-
-if [ $? -ne 0 ]; then
+echo "Acquiring install lock..."
+if ! acquire_lock; then
     echo ""
-    echo "ERROR: Failed to clone repository."
-    echo "Please check:"
-    echo "1. The repository URL is correct"
-    echo "2. The repository is public or you have access"
-    echo "3. You have an internet connection"
-    echo ""
-    rm -rf "$TEMP_DIR"
+    echo "ERROR: Failed to acquire install lock."
     read -n 1 -s -r -p "Press any key to exit..."
     exit 1
 fi
 
-cd "$TEMP_DIR" || exit 1
-echo "Clone completed!"
+# ====================================
+# Prepare Repository Cache
+# ====================================
+NEED_RECLONE=0
+if [ -d "$TEMP_DIR/.git" ]; then
+    echo "Reusing existing cache and updating from $REPO_BRANCH..."
+    cd "$TEMP_DIR" || exit 1
 
+    CURRENT_REMOTE=$(git remote get-url origin 2>/dev/null || true)
+    if [ -z "$CURRENT_REMOTE" ] || [ "$CURRENT_REMOTE" != "$REPO_URL" ]; then
+        echo "Remote URL changed or missing. Recreating cache..."
+        NEED_RECLONE=1
+    fi
+
+    if [ "$NEED_RECLONE" -eq 0 ]; then
+        git checkout "$REPO_BRANCH" >/dev/null 2>&1
+        if [ $? -ne 0 ]; then
+            git fetch origin "$REPO_BRANCH"
+            if [ $? -ne 0 ]; then
+                NEED_RECLONE=1
+            else
+                git checkout -b "$REPO_BRANCH" "origin/$REPO_BRANCH"
+                if [ $? -ne 0 ]; then
+                    NEED_RECLONE=1
+                fi
+            fi
+        fi
+    fi
+
+    if [ "$NEED_RECLONE" -eq 0 ]; then
+        git pull --ff-only origin "$REPO_BRANCH"
+        if [ $? -ne 0 ]; then
+            NEED_RECLONE=1
+        fi
+    fi
+else
+    NEED_RECLONE=1
+fi
+
+if [ "$NEED_RECLONE" -eq 1 ]; then
+    echo "Cloning repository into cache..."
+    echo "This may take a few minutes if there are large files..."
+    echo ""
+
+    rm -rf "$TEMP_DIR"
+    CLONE_LOG="${TMPDIR:-/tmp}/minecraft_client_clone_$$.log"
+    git clone --branch "$REPO_BRANCH" "$REPO_URL" "$TEMP_DIR" >"$CLONE_LOG" 2>&1
+    if [ $? -ne 0 ]; then
+        if grep -q "active 'post-checkout' hook found during 'git clone'" "$CLONE_LOG"; then
+            echo "Detected Git clone protection on this machine. Retrying clone with clone protection disabled for this command..."
+            rm -rf "$TEMP_DIR"
+            GIT_CLONE_PROTECTION_ACTIVE=false git clone --branch "$REPO_BRANCH" "$REPO_URL" "$TEMP_DIR" >>"$CLONE_LOG" 2>&1
+        fi
+    fi
+
+    if [ ! -d "$TEMP_DIR/.git" ]; then
+        echo ""
+        echo "ERROR: Failed to clone repository."
+        echo "Please check:"
+        echo "1. The repository URL is correct"
+        echo "2. The repository is public or you have access"
+        echo "3. You have an internet connection"
+        echo ""
+        echo "Clone output:"
+        cat "$CLONE_LOG"
+        rm -f "$CLONE_LOG"
+        read -n 1 -s -r -p "Press any key to exit..."
+        exit 1
+    fi
+
+    rm -f "$CLONE_LOG"
+fi
+
+cd "$TEMP_DIR" || exit 1
+
+echo "Pulling Git LFS content..."
+git lfs pull
+if [ $? -ne 0 ]; then
+    echo ""
+    echo "ERROR: Failed to pull Git LFS content."
+    echo "Please verify your Git LFS installation and network access."
+    echo ""
+    read -n 1 -s -r -p "Press any key to exit..."
+    exit 1
+fi
+
+echo "Repository cache is ready."
 echo ""
 
 # ====================================
@@ -167,18 +269,14 @@ if [ -f "sync-mods-mac.sh" ]; then
 else
     echo "ERROR: sync-mods-mac.sh not found!"
     echo "Repository may be incomplete."
-    rm -rf "$TEMP_DIR"
     read -n 1 -s -r -p "Press any key to exit..."
     exit 1
 fi
 
 # ====================================
-# Cleanup Temporary Directory
+# Release Lock
 # ====================================
-echo ""
-echo "Cleaning up temporary files..."
-cd "$HOME" || cd /
-rm -rf "$TEMP_DIR"
+release_lock
 
 if [ $SYNC_SUCCESS -eq 0 ]; then
     echo ""

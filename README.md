@@ -28,7 +28,7 @@ chmod +x install.sh
 ## What Happens?
 
 1. ✅ Checks if Git is installed
-2. ✅ Clones the repository to a temporary location
+2. ✅ Prepares a local repository workspace for syncing
 3. ✅ Downloads all mods and resource packs (via Git LFS)
 4. ✅ Syncs everything to your Minecraft installation
 5. ✅ Applies custom configurations
